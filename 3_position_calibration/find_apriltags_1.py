@@ -16,8 +16,6 @@ c_y = 120 * 0.5 # find_apriltags defaults to this if not set (the image.h * 0.5)
 def degrees(radians):
    return (180 * radians) / math.pi
 
-car_stop=0
-
 while(True):
     clock.tick()
     img = sensor.snapshot()
