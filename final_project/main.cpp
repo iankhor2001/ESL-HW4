@@ -27,6 +27,7 @@ DigitalIn encoder_left(D12);
 DigitalIn encoder_right(D13);
 volatile int steps_left,steps_right;
 volatile int last_left,last_right;
+void stoping_openmv();
 
 /* #region functions */
 float translate_theo_to_actual_distance(float distance){
@@ -215,7 +216,6 @@ void RPC_aprilTag (Arguments *in, Reply *out)   {
          }
          car.stop();
          printf("end\n");
-
       //   go_straight_by_distance(y_distance);
         // ping
     }
@@ -233,7 +233,62 @@ void RPC_aprilTag (Arguments *in, Reply *out)   {
         go_straight_by_distance(y_distance);
         // ping
     }
+    ThisThread::sleep_for(1500ms);
+    turn_by_angle(90);
+    xbee.write("Ending AprilTag Calibration Segment\n",37);
+    stoping_openmv();
     return;
+}
+void RPC_turnAround (Arguments *in, Reply *out){
+    xbee.write("Starting Turn Around Segment\n",30);
+    turn_by_angle(90);
+    ThisThread::sleep_for(1500ms);
+    go_straight_by_distance(5);
+    ThisThread::sleep_for(1500ms);
+    turn_by_angle(-90);
+    ThisThread::sleep_for(1500ms);
+    go_straight_by_distance(25);
+    ThisThread::sleep_for(1500ms);
+    turn_by_angle(-90);
+    ThisThread::sleep_for(1500ms);
+    uart.write("stop",4);    
+    xbee.write("Ending Turn Around Segment\n",28);
+}
+void RPC_parkNum (Arguments *in, Reply *out){
+    int parking_slot = in->getArg<double>();
+    int distance_to_go = 0;
+    xbee.write("Starting Parking Segment\n",25);
+    switch (parking_slot)
+    {
+    case 1:
+        distance_to_go = 30;
+        break;
+    case 2:
+        distance_to_go = 45;
+        break;
+    case 3:
+        distance_to_go = 60;
+        break;
+    case 4:
+        distance_to_go = 75;
+        break;
+    default:
+        break;
+    }
+    encoder_ticker.attach(&encoder_control, 10ms);
+    steps_left = 0;
+    steps_right = 0;
+    last_left = 0;
+    last_right = 0;
+    while(steps_right*6.5*PI/32 <= distance_to_go) {
+        ThisThread::sleep_for(100ms);
+    }
+    stoping_openmv();
+    ThisThread::sleep_for(100ms);
+    turn_by_angle(-90);
+    ThisThread::sleep_for(100ms);
+    go_straight_by_distance(15);
+    xbee.write("Ending Parking Segment\n",23);
 }
 
 RPCFunction rpcRunDist(&RPC_goStraightByDistance, "goDistance");
@@ -241,9 +296,56 @@ RPCFunction rpcTurnByAngle(&RPC_turnAngle, "turnAngle");
 RPCFunction rpcRevTurnByAngle(&RPC_turnAngleRev, "turnAngleRev");
 RPCFunction rpcAnalyse(&RPC_analyse, "parking");
 RPCFunction rpcAprilTag(&RPC_aprilTag, "apriltag_calibration");
+RPCFunction rpcTurnAround(&RPC_turnAround, "turnAround");
+RPCFunction rpcParkNum(&RPC_parkNum, "parkNum");
 /* #endregion my RPC */
 
 /* #region xbee */
+void RPC_sendXbee(Arguments *in, Reply *out){
+    int msg_mode = in->getArg<double>();
+    int msg_num = in->getArg<double>();
+    if(msg_mode == 0){  // Line Following
+        switch (msg_num)
+        {
+        case 0:
+            xbee.write("Starting Line Following Segment 1\r\n",35);
+            break;
+        case 1:
+            xbee.write("Ending Line Following Segment 1\r\n",33);
+            break;
+        default:
+            break;
+        }
+    }
+    else if(msg_mode==1){
+        switch (msg_num)
+        {
+        case 0:
+            xbee.write("Starting TensorFlow Segment\r\n",29);
+            break;
+        case 1:
+            xbee.write("Ending TensorFlow Segment\r\n",27);
+            break;
+        case 2:
+            xbee.write("This is: 1\r\n",12);
+            break;
+        case 3:
+            xbee.write("This is: 2\r\n",12);
+            break;
+        case 4:
+            xbee.write("This is: 3\r\n",12);
+            break;
+        case 5:
+            xbee.write("This is: 4\r\n",12);
+            break;
+        default:
+            break;
+        }
+    }
+    // xbee.
+}
+RPCFunction rpcPrintXbee(&RPC_sendXbee, "printXbee");
+
 void xbee_rpc() {
    char buf[256], outbuf[256];
    FILE *devin = fdopen(&xbee, "r");
@@ -265,6 +367,9 @@ void xbee_rpc() {
 /* #endregion xbee */
 
 /* #region uart */
+void stoping_openmv(){
+    uart.write("stop",4);
+}
 void uart_rpc() {
    char buf[256], outbuf[256];
    FILE *devin = fdopen(&uart, "r");
