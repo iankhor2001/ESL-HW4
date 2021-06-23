@@ -189,29 +189,35 @@ void RPC_analyse (Arguments *in, Reply *out) {
    }
 }
 void RPC_aprilTag (Arguments *in, Reply *out)   {
+    xbee.write("Starting AprilTag Calibration Segment\r\n",38);
     float degree = in->getArg<double>();
     float distance = in->getArg<double>();
     if(degree<=180){
-        float x_distance = distance * sin(degree);
         float y_distance = distance * cos(degree) -5;
-        int degree_to_turn = 90-degree+13;
+        int degree_to_turn = 90+degree;
+        float x_distance = abs(distance * cos(degree_to_turn));
         printf("turning 1\n");
-        turn_by_angle(degree_to_turn);
+        turn_by_angle(abs(degree_to_turn));
         ThisThread::sleep_for(2s);
         printf("straight 1\n");
-        go_straight_by_distance(x_distance);
+         car.goStraight(70);
+        // go_straight_by_distance(x_distance);
+        while(ping_distance*17700.4f-4>42){
+            // printf("%dcm",ping_distance);
+            ThisThread::sleep_for(100ms);
+         }
         //  car.goStraight(100);
         //  ThisThread::sleep_for(1s);
          car.stop();
-         ThisThread::sleep_for(2s);
+         ThisThread::sleep_for(1500ms);
          printf("turning 2\n");
          turn_by_angle(-90);
-         ThisThread::sleep_for(2s);
+         ThisThread::sleep_for(1500ms);
          printf("straight 2\n");
-         car.goStraight(100);
+         car.goStraight(70);
          printf("%dcm",ping_distance*17700.4f-4);
-         while(ping_distance*17700.4f-4>25){
-            printf("%dcm",ping_distance);
+         while(ping_distance*17700.4f-4>30){
+            // printf("%dcm",ping_distance);
             ThisThread::sleep_for(100ms);
          }
          car.stop();
@@ -235,24 +241,24 @@ void RPC_aprilTag (Arguments *in, Reply *out)   {
     }
     ThisThread::sleep_for(1500ms);
     turn_by_angle(90);
-    xbee.write("Ending AprilTag Calibration Segment\n",37);
+    xbee.write("Ending AprilTag Calibration Segment\r\n",37);
     stoping_openmv();
     return;
 }
 void RPC_turnAround (Arguments *in, Reply *out){
-    xbee.write("Starting Turn Around Segment\n",30);
+    xbee.write("Starting Turn Around Segment\r\n",30);
     turn_by_angle(90);
     ThisThread::sleep_for(1500ms);
     go_straight_by_distance(5);
     ThisThread::sleep_for(1500ms);
     turn_by_angle(-90);
     ThisThread::sleep_for(1500ms);
-    go_straight_by_distance(25);
+    go_straight_by_distance(20);
     ThisThread::sleep_for(1500ms);
     turn_by_angle(-90);
     ThisThread::sleep_for(1500ms);
     uart.write("stop",4);    
-    xbee.write("Ending Turn Around Segment\n",28);
+    xbee.write("Ending Turn Around Segment\r\n",28);
 }
 void RPC_parkNum (Arguments *in, Reply *out){
     int parking_slot = in->getArg<double>();
@@ -275,15 +281,22 @@ void RPC_parkNum (Arguments *in, Reply *out){
     default:
         break;
     }
-    encoder_ticker.attach(&encoder_control, 10ms);
-    steps_left = 0;
-    steps_right = 0;
-    last_left = 0;
-    last_right = 0;
-    while(steps_right*6.5*PI/32 <= distance_to_go) {
+    car.goStraight(70);
+    printf("%dcm",ping_distance*17700.4f-4);
+    while(ping_distance*17700.4f-4>20){
+        // printf("%dcm",ping_distance);
         ThisThread::sleep_for(100ms);
     }
+    // encoder_ticker.attach(&encoder_control, 10ms);
+    // steps_left = 0;
+    // steps_right = 0;
+    // last_left = 0;
+    // last_right = 0;
+    // while(steps_left*6.5*PI/32 <= distance_to_go) {
+    //     ThisThread::sleep_for(100ms);
+    // }
     stoping_openmv();
+    car.stop();
     ThisThread::sleep_for(100ms);
     turn_by_angle(-90);
     ThisThread::sleep_for(100ms);
